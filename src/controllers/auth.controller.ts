@@ -9,17 +9,23 @@ export const registerUser = async (
   next: NextFunction
 ) => {
   try {
-    const { username, email, password } = req.body;
+    const { name: username, email, password, phone } = req.body;
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create user
-    const newUser = await User.create({
+    const newUserData: any = {
       username,
       email,
       password: hashedPassword,
-    });
+    };
+
+    if (phone) {
+      newUserData.phone = phone;
+    }
+
+    const newUser = await User.create(newUserData);
 
     res.status(201).json({ message: "User registered successfully", newUser });
   } catch (error) {
