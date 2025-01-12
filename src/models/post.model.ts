@@ -2,7 +2,8 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IPost extends Document {
   author: string;
-  text: string;
+  title: string;
+  description?: string;
   price: number;
   image?: string;
   likes: string[];
@@ -16,8 +17,9 @@ const PostSchema: Schema = new Schema(
       ref: "User",
       required: true,
     },
-    text: { type: String, required: true },
+    title: { type: String, required: true },
     price: { type: Number, required: true },
+    description: { type: String },
     image: { type: String },
     likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     comments: [{ type: mongoose.Schema.Types.ObjectId, ref: "Comment" }],

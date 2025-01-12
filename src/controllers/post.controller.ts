@@ -1,27 +1,38 @@
 import { Request, Response, NextFunction } from "express";
 import Post from "../models/post.model";
 import User from "../models/user.model";
+import multer from "multer";
 
-export const createPost = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    const { text, image } = req.body;
-    const userId = (req as any).user.id;
+// Configure Multer for image uploads
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
-    const newPost = await Post.create({
-      author: userId,
-      text,
-      image,
-    });
+export const createPost = [
+  upload.single("image"), // Handle file uploads
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { title, description, price } = req.body;
+      const userId = (req as any).user.id;
 
-    res.status(201).json({ message: "Post created", post: newPost });
-  } catch (error) {
-    next(error);
-  }
-};
+      let imageBase64: string | undefined;
+      if (req.file) {
+        imageBase64 = req.file.buffer.toString("base64");
+      }
+
+      const newPost = await Post.create({
+        author: userId,
+        title,
+        description,
+        price: Number(price),
+        image: imageBase64,
+      });
+
+      res.status(201).json({ message: "Post created", post: newPost });
+    } catch (error) {
+      next(error);
+    }
+  },
+];
 
 export const getPosts = async (
   req: Request,
@@ -29,16 +40,28 @@ export const getPosts = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, query, minPrice, maxPrice } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
 
-    const posts = await Post.find()
+    const filters: any = {};
+
+    if (query) {
+      filters.title = { $regex: query, $options: "i" }; // Case-insensitive search
+    }
+    if (minPrice) {
+      filters.price = { ...filters.price, $gte: Number(minPrice) };
+    }
+    if (maxPrice) {
+      filters.price = { ...filters.price, $lte: Number(maxPrice) };
+    }
+
+    const posts = await Post.find(filters)
       .populate("author", "username profileImage")
       .skip(skip)
       .limit(Number(limit))
       .sort({ createdAt: -1 });
 
-    const total = await Post.countDocuments();
+    const total = await Post.countDocuments(filters);
 
     res.status(200).json({ total, posts });
   } catch (error) {
@@ -85,8 +108,8 @@ export const updatePost = async (
       return;
     }
 
-    const { text, image } = req.body;
-    post.text = text || post.text;
+    const { title, image } = req.body;
+    post.title = title || post.title;
     post.image = image || post.image;
 
     const updatedPost = await post.save();
