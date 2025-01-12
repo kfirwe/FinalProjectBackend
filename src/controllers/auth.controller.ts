@@ -76,32 +76,42 @@ export const refreshToken = async (
 
     // Validate token existence
     if (!token) {
-      res.status(400).json({ message: "Token is required" });
+      res.status(400).json({ message: "Refresh token is required" });
       return;
     }
 
-    // Verify token
-    const user = jwt.verify(token, process.env.JWT_SECRET || "") as JwtPayload;
+    // Verify the token
+    const secret = process.env.JWT_SECRET || "";
+    let decodedToken: JwtPayload;
 
-    if (!user || typeof user === "string") {
-      res.status(403).json({ message: "Invalid token" });
+    try {
+      decodedToken = jwt.verify(token, secret) as JwtPayload;
+    } catch (error) {
+      if (error instanceof jwt.TokenExpiredError) {
+        res.status(403).json({ message: "Refresh token has expired" });
+        return;
+      }
+      res.status(403).json({ message: "Invalid refresh token" });
       return;
     }
 
-    // Generate new token
-    const newToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET || "", {
-      expiresIn: "1h",
+    // Ensure payload is valid
+    if (!decodedToken || !decodedToken.id) {
+      res.status(403).json({ message: "Invalid refresh token payload" });
+      return;
+    }
+
+    // Generate a new access token
+    const newToken = jwt.sign({ id: decodedToken.id }, secret, {
+      expiresIn: "1h", // Adjust the expiry time as needed
     });
 
-    // Respond with new token
-    res.status(200).json({ message: "Token refreshed", token: newToken });
+    // Respond with the new token
+    res.status(200).json({
+      message: "Token refreshed successfully",
+      token: newToken,
+    });
   } catch (error) {
-    // Handle errors during token verification
-    if (error instanceof Error && error.name === "TokenExpiredError") {
-      res.status(403).json({ message: "Token expired" });
-      return;
-    }
-    res.status(403).json({ message: "Invalid token" });
-    next(error); // Pass other errors to the error handler
+    next(error); // Pass unexpected errors to the global error handler
   }
 };
