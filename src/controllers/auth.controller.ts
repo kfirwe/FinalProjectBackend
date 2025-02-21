@@ -48,8 +48,12 @@ export const loginUser = async (
       return;
     }
 
+    const role = user.role;
+
     // Compare password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = user.password
+      ? await bcrypt.compare(password, user.password)
+      : false; // If no password (Google OAuth user), fail login
     if (!isPasswordValid) {
       res.status(401).json({ message: "Invalid credentials" });
       return;
@@ -60,7 +64,7 @@ export const loginUser = async (
       expiresIn: "1h",
     });
 
-    res.status(200).json({ message: "Login successful", token });
+    res.status(200).json({ message: "Login successful", token, role });
   } catch (error) {
     next(error); // Pass errors to error-handling middleware
   }

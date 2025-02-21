@@ -4,6 +4,7 @@ export interface IComment extends Document {
   post: string;
   author: string;
   text: string;
+  createdAt?: Date;
 }
 
 const CommentSchema: Schema = new Schema(

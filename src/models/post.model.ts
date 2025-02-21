@@ -5,6 +5,7 @@ export interface IPost extends Document {
   title: string;
   description?: string;
   price: number;
+  category: string;
   image?: string;
   likes: string[];
   comments: string[];
@@ -19,6 +20,7 @@ const PostSchema: Schema = new Schema(
     },
     title: { type: String, required: true },
     price: { type: Number, required: true },
+    category: { type: String, required: true },
     description: { type: String },
     image: { type: String },
     likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
