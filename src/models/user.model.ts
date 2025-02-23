@@ -20,7 +20,7 @@ const UserSchema: Schema = new Schema(
       required: function (this: IUser) {
         return !this.googleId; //  Required ONLY if user is not using Google OAuth
       },
-      select: false, // 🔒 Hide password in queries for security
+      select: true, // 🔒 Hide password in queries for security
     },
     googleId: { type: String, unique: true, sparse: true }, //  Not required for non-Google users
     phone: { type: String, default: null }, //  Optional (Google users may not have a phone)
