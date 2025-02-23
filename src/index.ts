@@ -1,5 +1,7 @@
 import express, { Application } from "express";
 import dotenv from "dotenv";
+import path from "path";
+import fs from "fs";
 import cors from "cors";
 import mongoose from "mongoose";
 import authRoutes from "./routes/auth.routes";
@@ -17,6 +19,16 @@ dotenv.config();
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
 
+//  Ensure "uploads/post-images" directory exists
+const uploadsDir = path.join(__dirname, "../uploads/post-images");
+const uploadsUserDir = path.join(__dirname, "../uploads/user-images");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true }); // Create directory if it doesn't exist
+}
+if (!fs.existsSync(uploadsUserDir)) {
+  fs.mkdirSync(uploadsUserDir, { recursive: true }); // Create directory if it doesn't exist
+}
+
 app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
@@ -29,6 +41,10 @@ app.use(
 );
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Serve static images
+app.use("/uploads/post-images", express.static(uploadsDir));
+app.use("/uploads/user-images", express.static(uploadsUserDir));
 
 app.use("/api/comments", commentRoutes);
 app.use("/api/posts", postRoutes);

@@ -1,13 +1,53 @@
 import { Request, Response, NextFunction } from "express";
+import fs from "fs";
+import path from "path";
 import Post from "../models/post.model";
 import User from "../models/user.model";
 import Comment from "../models/comment.model";
 import multer from "multer";
+import { v4 as uuidv4 } from "uuid";
 
-// Configure Multer for image uploads
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
+//  Configure Multer for saving images locally
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/post-images/"); // Save images in this directory
+  },
+  filename: async (req, file, cb) => {
+    try {
+      const userId = (req as any).user.id;
+      const user = await User.findById(userId);
 
+      if (!user) {
+        cb(new Error("User not found"), "");
+        return;
+      }
+
+      const ext = path.extname(file.originalname);
+      const filename = `${user._id}-${uuidv4()}${ext}`;
+      cb(null, filename);
+    } catch (error) {
+      cb(error as Error, "");
+    }
+  },
+});
+
+//  File upload filter (only accept images)
+const fileFilter = (req: Request, file: Express.Multer.File, cb: any) => {
+  if (file.mimetype.startsWith("image/")) {
+    cb(null, true);
+  } else {
+    cb(new Error("Invalid file type"), false);
+  }
+};
+
+//  Initialize Multer
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }, // Limit file size to 5MB
+});
+
+//  Handle Post Creation with Image Upload
 export const createPost = [
   upload.single("image"), // Handle file uploads
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -15,18 +55,26 @@ export const createPost = [
       const { title, description, price, category } = req.body;
       const userId = (req as any).user.id;
 
-      let imageBase64: string | undefined;
-      if (req.file) {
-        imageBase64 = req.file.buffer.toString("base64");
+      // Ensure user exists
+      const user = await User.findById(userId);
+      if (!user) {
+        res.status(404).json({ message: "User not found" });
+        return;
       }
 
+      // Construct image path if uploaded
+      const imagePath = req.file
+        ? `/uploads/post-images/${req.file.filename}`
+        : null;
+
+      //  Create new post
       const newPost = await Post.create({
         author: userId,
         title,
         description,
         category,
         price: Number(price),
-        image: imageBase64,
+        image: imagePath, // Save only the file path
       });
 
       res.status(201).json({ message: "Post created", post: newPost });
@@ -121,11 +169,27 @@ export const getPosts = async (
     const user = userId ? await User.findById(userId) : null;
     const userLikes = user ? user.likes : [];
 
-    const postsWithAdditionalFields = posts.map((post: any) => ({
-      ...post.toObject(),
-      isLiked: userLikes.includes(post._id.toString()), // Check if post is liked by user
-      commentsCount: post.comments.length, // Count comments
-    }));
+    const postsWithAdditionalFields = posts.map((post: any) => {
+      let imageBase64 = "";
+
+      if (post.image) {
+        // If image is a file path (saved locally)
+        const imagePath = path.join(__dirname, `../../${post.image}`);
+        if (fs.existsSync(imagePath)) {
+          const imageBuffer = fs.readFileSync(imagePath);
+          imageBase64 = imageBuffer.toString("base64");
+        } else {
+          console.warn(`⚠️ Image file not found: ${imagePath}`);
+        }
+      }
+
+      return {
+        ...post.toObject(),
+        image: imageBase64, // Send base64-encoded image
+        isLiked: userLikes.includes(post._id.toString()), // Check if post is liked by user
+        commentsCount: post.comments.length, // Count comments
+      };
+    });
 
     const total = await Post.countDocuments(filters);
 
@@ -148,7 +212,6 @@ export const getPostsLanding = async (
       minPrice,
       maxPrice,
       category,
-      likedOnly = false, // New query parameter to filter liked posts
     } = req.query;
 
     const skip = (Number(page) - 1) * Number(limit);
@@ -181,9 +244,30 @@ export const getPostsLanding = async (
       .limit(Number(limit))
       .sort({ createdAt: -1 });
 
+    // Process posts and convert images to base64 if stored locally
+    const postsWithImages = posts.map((post: any) => {
+      let imageBase64 = "";
+
+      if (post.image) {
+        const imagePath = path.join(__dirname, `../../${post.image}`);
+        if (fs.existsSync(imagePath)) {
+          const imageBuffer = fs.readFileSync(imagePath);
+          imageBase64 = imageBuffer.toString("base64");
+        } else {
+          console.warn(`⚠️ Image file not found: ${imagePath}`);
+        }
+      }
+
+      return {
+        ...post.toObject(),
+        image: imageBase64, // Convert to base64 for frontend
+        commentsCount: post.comments.length, // Count comments
+      };
+    });
+
     const total = await Post.countDocuments(filters);
 
-    res.status(200).json({ total, posts: posts });
+    res.status(200).json({ total, posts: postsWithImages });
   } catch (error) {
     next(error);
   }
@@ -236,23 +320,117 @@ export const getPostById = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-    const post = await Post.findById(id).populate(
-      "author",
-      "username profileImage"
-    );
+    const post = await Post.findById(id).populate<{
+      author: { profileImage: string };
+    }>("author", "username profileImage");
 
     if (!post) {
       res.status(404).json({ message: "Post not found" });
       return;
     }
 
-    res.status(200).json(post);
+    // Handle Post Image
+    let imageBase64 = "";
+    if (post.image) {
+      const imagePath = path.join(
+        __dirname,
+        `../../uploads/post-images/${post.image}`
+      );
+      if (fs.existsSync(imagePath)) {
+        const imageBuffer = fs.readFileSync(imagePath);
+        imageBase64 = imageBuffer.toString("base64");
+      } else {
+        console.warn(`⚠️ Post Image not found: ${imagePath}`);
+      }
+    }
+
+    // Handle User Profile Image
+    let profileImageBase64 = "";
+    if (
+      post.author.profileImage &&
+      !post.author.profileImage.startsWith("http")
+    ) {
+      const profileImagePath = path.join(
+        __dirname,
+        `../../uploads/user-images/${post.author.profileImage}`
+      );
+      if (fs.existsSync(profileImagePath)) {
+        const profileImageBuffer = fs.readFileSync(profileImagePath);
+        profileImageBase64 = profileImageBuffer.toString("base64");
+      } else {
+        console.warn(`⚠️ User Profile Image not found: ${profileImagePath}`);
+      }
+    } else {
+      profileImageBase64 = post.author.profileImage; // Keep URL if already an external link
+    }
+
+    res.status(200).json({
+      ...post.toObject(),
+      image: imageBase64, // Send post image as base64
+      author: {
+        ...post.author,
+        profileImage: profileImageBase64, // Send user profile image as base64 if local
+      },
+    });
   } catch (error) {
     next(error);
   }
 };
 
-export const updatePost = async (
+export const updatePost = [
+  upload.single("image"), // Middleware to handle file upload
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const userId = (req as any).user.id;
+
+      const user = await User.findById(userId);
+      const post = await Post.findById(id);
+
+      if (
+        !post ||
+        !user ||
+        (post.author.toString() !== userId && user.role !== "admin")
+      ) {
+        res.status(403).json({ message: "Unauthorized to update this post" });
+        return;
+      }
+
+      // Get text fields from `req.body`
+      const { title, price, category, description } = req.body;
+
+      post.title = title || post.title;
+      post.price = price || post.price;
+      post.description = description || post.description;
+      post.category = category || post.category;
+
+      // Handle new image upload
+      if (req.file) {
+        // Delete old image if it exists
+        if (post.image) {
+          const oldImagePath = path.join(
+            __dirname,
+            `../../uploads/post-images/${post.image}`
+          );
+          if (fs.existsSync(oldImagePath)) {
+            fs.unlinkSync(oldImagePath);
+          }
+        }
+
+        // Save new image filename
+        post.image = req.file.filename;
+      }
+
+      const updatedPost = await post.save();
+
+      res.status(200).json({ message: "Post updated", post: updatedPost });
+    } catch (error) {
+      next(error);
+    }
+  },
+];
+
+export const deletePost = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -269,62 +447,29 @@ export const updatePost = async (
       !user ||
       (post.author.toString() !== userId && user.role !== "admin")
     ) {
-      res.status(403).json({ message: "Unauthorized to update this post" });
-      return;
-    }
-
-    // Get text fields from `req.body`
-    const { title, price, category, description } = req.body;
-
-    // Update text fields
-    post.title = title || post.title;
-    post.price = price || post.price;
-    post.description = description || post.description;
-    post.category = category || post.category;
-
-    // Handle image upload (if provided)
-    if (req.file) {
-      post.image = req.file.buffer.toString("base64"); // Convert image to Base64
-    }
-
-    const updatedPost = await post.save();
-    res.status(200).json({ message: "Post updated", post: updatedPost });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const deletePost = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    const { id } = req.params;
-    const userId = (req as any).user.id;
-
-    const user = await User.findById(userId);
-
-    const post = await Post.findById(id);
-
-    if (
-      !post ||
-      post.author.toString() !== userId ||
-      !user ||
-      user.role !== "admin"
-    ) {
       res.status(403).json({ message: "Unauthorized to delete this post" });
       return;
     }
 
+    // Delete the image file if it exists
+    if (post.image) {
+      const imagePath = path.join(
+        __dirname,
+        `../../uploads/post-images/${post.image}`
+      );
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+      }
+    }
+
+    // Delete the post from DB
     await post.deleteOne();
 
-    res.status(200).json({ message: "Post deleted" });
+    res.status(200).json({ message: "Post deleted successfully" });
   } catch (error) {
     next(error);
   }
 };
-
 export const likePost = async (
   req: Request,
   res: Response,
@@ -461,12 +606,18 @@ export const deletePostByType = async (
       return;
     }
 
-    // Ensure the user is the author of the post
-    // if (post.author.toString() !== userId) {
-    //   res.status(403).json({ message: "Unauthorized to delete this post." });
-    //   return;
-    // }
+    // Delete the image file if it exists
+    if (post.image) {
+      const imagePath = path.join(
+        __dirname,
+        `../../uploads/post-images/${post.image}`
+      );
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+      }
+    }
 
+    // Delete the post from DB
     await post.deleteOne();
 
     res.status(200).json({ message: "Post deleted successfully." });
