@@ -43,7 +43,7 @@ const createTestUser = async () => {
     phone: '1234567890',
   });
 
-  const token = jwt.sign({ id: user._id }, 'your_jwt_secret');
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || "");
   return { user, token };
 };
 
@@ -156,7 +156,7 @@ describe('Comment Controller Tests', () => {
         text: 'This is a comment to delete',
       });
 
-      const unauthorizedToken = jwt.sign({ id: unauthorizedUser._id }, 'your_jwt_secret');
+      const unauthorizedToken = jwt.sign({ id: unauthorizedUser._id }, process.env.JWT_SECRET || "");
 
       const response = await request(app)
         .delete(`/api/comments/${post._id}/${comment._id}`)
