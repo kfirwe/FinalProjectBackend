@@ -29,6 +29,47 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+/**
+ * @swagger
+ * /api/users/uploadProfileImage:
+ *   post:
+ *     summary: Upload a profile image for the user
+ *     description: Allows an authenticated user to upload a profile image.
+ *     consumes:
+ *       - multipart/form-data
+ *     parameters:
+ *       - in: formData
+ *         name: profileImage
+ *         type: file
+ *         description: The profile image file to upload.
+ *     responses:
+ *       200:
+ *         description: Profile image updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Profile image updated successfully"
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       description: User's ID.
+ *                     username:
+ *                       type: string
+ *                       description: User's username.
+ *                     profileImage:
+ *                       type: string
+ *                       description: User's profile image (Base64 encoded).
+ *       400:
+ *         description: No image file uploaded.
+ *       404:
+ *         description: User not found.
+ */
 export const uploadProfileImage = [
   upload.single("profileImage"), // Middleware to handle the image upload
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -83,6 +124,39 @@ export const uploadProfileImage = [
   },
 ];
 
+/**
+ * @swagger
+ * /api/users/{userId}/posts:
+ *   get:
+ *     summary: Get all posts of the current user
+ *     description: Retrieves all posts created by the currently authenticated user.
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: The ID of the user whose posts to fetch.
+ *     responses:
+ *       200:
+ *         description: List of user posts.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   title:
+ *                     type: string
+ *                   description:
+ *                     type: string
+ *                   price:
+ *                     type: number
+ *                   image:
+ *                     type: string
+ *                     description: Base64 encoded image for the post.
+ *       404:
+ *         description: User not found.
+ */
 export const getUserPosts = async (
   req: Request,
   res: Response,
@@ -121,6 +195,30 @@ export const getUserPosts = async (
   }
 };
 
+/**
+ * @swagger
+ * /api/users/profile:
+ *   get:
+ *     summary: Get the profile of the authenticated user
+ *     description: Retrieves the profile of the currently authenticated user, including their profile image.
+ *     responses:
+ *       200:
+ *         description: User profile data with profile image (Base64 encoded).
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 username:
+ *                   type: string
+ *                 email:
+ *                   type: string
+ *                 profileImage:
+ *                   type: string
+ *                   description: Base64 encoded profile image.
+ *       404:
+ *         description: User not found.
+ */
 export const getUserProfile = async (
   req: Request,
   res: Response,
@@ -153,6 +251,43 @@ export const getUserProfile = async (
   }
 };
 
+/**
+ * @swagger
+ * /api/users/liked-posts:
+ *   get:
+ *     summary: Get posts liked by the user
+ *     description: Retrieves all posts liked by the currently authenticated user.
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         type: integer
+ *         description: The page number for pagination.
+ *       - in: query
+ *         name: limit
+ *         type: integer
+ *         description: The number of posts per page.
+ *     responses:
+ *       200:
+ *         description: List of liked posts.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   title:
+ *                     type: string
+ *                   description:
+ *                     type: string
+ *                   price:
+ *                     type: number
+ *                   image:
+ *                     type: string
+ *                     description: Base64 encoded image for the post.
+ *       404:
+ *         description: User not found.
+ */
 export const getLikedPosts = async (
   req: Request,
   res: Response,
@@ -199,6 +334,41 @@ export const getLikedPosts = async (
   }
 };
 
+/**
+ * @swagger
+ * /api/users/profile:
+ *   get:
+ *     summary: Get the profile of the authenticated user
+ *     description: Retrieve the profile details of the currently authenticated user, including their username, email, and phone number.
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved the user profile.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 _id:
+ *                   type: string
+ *                   description: The user's ID.
+ *                   example: "60b8d48ff0c1a712a8e4c6b2"
+ *                 username:
+ *                   type: string
+ *                   description: The user's username.
+ *                   example: "john_doe"
+ *                 email:
+ *                   type: string
+ *                   description: The user's email address.
+ *                   example: "john.doe@example.com"
+ *                 phone:
+ *                   type: string
+ *                   description: The user's phone number.
+ *                   example: "1234567890"
+ *       404:
+ *         description: User not found.
+ *       500:
+ *         description: Internal server error.
+ */
 export const getProfile = async (
   req: Request,
   res: Response,
@@ -224,6 +394,53 @@ export const getProfile = async (
   }
 };
 
+/**
+ * @swagger
+ * /api/users/{userId}/update:
+ *   patch:
+ *     summary: Update a user's profile
+ *     description: Allows a user to update their profile, including the username or profile image.
+ *     parameters:
+ *       - in: body
+ *         name: userData
+ *         description: The data to update the user profile.
+ *         schema:
+ *           type: object
+ *           properties:
+ *             username:
+ *               type: string
+ *               description: New username to update.
+ *             profileImage:
+ *               type: file
+ *               description: Profile image to upload.
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Profile updated"
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       description: User's ID.
+ *                     username:
+ *                       type: string
+ *                       description: User's username.
+ *                     profileImage:
+ *                       type: string
+ *                       description: User's updated profile image (Base64 encoded).
+ *       404:
+ *         description: User not found.
+ *       400:
+ *         description: No image file uploaded.
+ */
 export const updateUserProfile = [
   upload.single("profileImage"), // Middleware to handle file upload
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -281,6 +498,51 @@ export const updateUserProfile = [
   },
 ];
 
+/**
+ * @swagger
+ * /api/users/all:
+ *   get:
+ *     summary: Get a list of all users
+ *     description: Retrieve a paginated list of all users.
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         type: integer
+ *         description: The page number for pagination.
+ *       - in: query
+ *         name: limit
+ *         type: integer
+ *         description: The number of users per page.
+ *       - in: query
+ *         name: query
+ *         type: string
+ *         description: The search query to search by username or email.
+ *     responses:
+ *       200:
+ *         description: A list of all users.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 total:
+ *                   type: integer
+ *                   description: Total number of users.
+ *                 users:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       username:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       profileImage:
+ *                         type: string
+ *                         description: Base64 encoded profile image for each user.
+ *       404:
+ *         description: No users found.
+ */
 export const getAllUsers = async (
   req: Request,
   res: Response,
@@ -330,7 +592,62 @@ export const getAllUsers = async (
   }
 };
 
-// Update a user field
+/**
+ * @swagger
+ * /api/users/update:
+ *   patch:
+ *     summary: Update a user's field
+ *     description: Allows the authenticated user to update a specific field, including their username, phone number, or profile image.
+ *     parameters:
+ *       - in: body
+ *         name: updateUser
+ *         description: The data to update the user profile.
+ *         required: true
+ *         schema:
+ *           type: object
+ *           properties:
+ *             id:
+ *               type: string
+ *               description: The user's ID to update.
+ *             field:
+ *               type: string
+ *               description: The field to update (e.g., "username", "phone", "profileImage").
+ *             value:
+ *               type: string
+ *               description: The new value for the field to update.
+ *     responses:
+ *       200:
+ *         description: User updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "User updated successfully."
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       description: User's ID.
+ *                     username:
+ *                       type: string
+ *                       description: User's username.
+ *                     email:
+ *                       type: string
+ *                       description: User's email.
+ *                     profileImage:
+ *                       type: string
+ *                       description: User's profile image (Base64 encoded).
+ *       400:
+ *         description: Invalid phone number format or missing parameters.
+ *       404:
+ *         description: User not found.
+ *       403:
+ *         description: Unauthorized action.
+ */
 export const updateUserField = async (
   req: Request,
   res: Response,
@@ -411,7 +728,25 @@ export const updateUserField = async (
   }
 };
 
-// Delete a user
+/**
+ * @swagger
+ * /api/users/{userId}/delete:
+ *   delete:
+ *     summary: Delete a user
+ *     description: Allows an admin to delete a user. The currently authenticated user cannot delete their own account.
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: The ID of the user to delete.
+ *     responses:
+ *       200:
+ *         description: User deleted successfully.
+ *       403:
+ *         description: You cannot delete your own account.
+ *       404:
+ *         description: User not found.
+ */
 export const deleteUser = async (
   req: Request,
   res: Response,
