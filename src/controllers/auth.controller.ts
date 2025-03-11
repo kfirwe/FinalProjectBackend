@@ -43,10 +43,34 @@ export const registerUser = async (
   try {
     const { name: username, email, password, phone } = req.body;
 
-    // Hash password
+    // 🔍 Check if the user already exists
+    const existingUser = await User.findOne({ email });
+
+    if (existingUser) {
+      // 🔍 Check if the user registered via Google
+      if (existingUser.googleId) {
+        console.log("🔑 User exists via Google. Adding password...");
+
+        // Hash and update the password
+        const hashedPassword = await bcrypt.hash(password, 10);
+        existingUser.password = hashedPassword;
+        await existingUser.save();
+
+        res.status(200).json({
+          message: "Password added to Google account",
+          user: existingUser,
+        });
+        return;
+      }
+
+      res.status(400).json({ error: "User already exists with this email." });
+      return;
+    }
+
+    // 🔒 Hash the password for new users
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
+    // 🆕 Create a new user
     const newUserData: any = {
       username,
       email,
@@ -59,9 +83,13 @@ export const registerUser = async (
 
     const newUser = await User.create(newUserData);
 
-    res.status(201).json({ message: "User registered successfully", newUser });
+    res
+      .status(201)
+      .json({ message: "User registered successfully", user: newUser });
+    return;
   } catch (error) {
-    next(error); // Pass errors to error-handling middleware
+    console.error("❌ Error in registerUser:", error);
+    next(error);
   }
 };
 

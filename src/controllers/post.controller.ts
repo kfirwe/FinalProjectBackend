@@ -94,6 +94,11 @@ export const createPost = [
         return;
       }
 
+      if (!user.phone) {
+        res.status(404).json({ message: "Please update your phone number" });
+        return;
+      }
+
       // Construct image path if uploaded
       const imagePath = req.file
         ? `/uploads/post-images/${req.file.filename}`
