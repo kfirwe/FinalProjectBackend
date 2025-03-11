@@ -11,7 +11,7 @@ import userRoutes from "./routes/user.routes";
 import aiRoutes from "./routes/ai.routes";
 import { errorHandler } from "./middlewares/errorHandler";
 import cookieParser from "cookie-parser";
-// import passport from "./config/passport";
+import passport from "./config/passport";
 import session from "express-session";
 
 dotenv.config();
@@ -39,8 +39,8 @@ app.use(
     saveUninitialized: true,
   })
 );
-// app.use(passport.initialize());
-// app.use(passport.session());
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Serve static images
 app.use("/uploads/post-images", express.static(uploadsDir));
