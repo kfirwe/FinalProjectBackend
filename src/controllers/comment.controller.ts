@@ -2,6 +2,61 @@ import { Request, Response, NextFunction } from "express";
 import Comment from "../models/comment.model";
 import Post from "../models/post.model";
 
+/**
+ * @swagger
+ * /api/comments/{postId}:
+ *   post:
+ *     summary: Add a comment to a post
+ *     description: Adds a new comment to the specified post by the logged-in user.
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         description: ID of the post to add a comment to.
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: body
+ *         name: comment
+ *         description: The text content of the comment.
+ *         required: true
+ *         schema:
+ *           type: object
+ *           properties:
+ *             text:
+ *               type: string
+ *               example: "This is a test comment."
+ *     responses:
+ *       201:
+ *         description: Comment added successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Comment added successfully"
+ *                 comment:
+ *                   type: object
+ *                   properties:
+ *                     _id:
+ *                       type: string
+ *                       example: "607c72ef1f7d0e4b98d06d98"
+ *                     text:
+ *                       type: string
+ *                       example: "This is a test comment."
+ *                     author:
+ *                       type: string
+ *                       example: "607c72ef1f7d0e4b98d06d99"
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2021-04-14T10:00:00.000Z"
+ *       400:
+ *         description: Missing required fields
+ *       404:
+ *         description: Post not found
+ */
 export const addComment = async (
   req: Request,
   res: Response,
@@ -50,6 +105,51 @@ export const addComment = async (
   }
 };
 
+/**
+ * @swagger
+ * /api/comments/{postId}:
+ *   get:
+ *     summary: Get all comments for a post
+ *     description: Retrieves all comments for a given post.
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         description: ID of the post to fetch comments for.
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Comments retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Comments retrieved successfully"
+ *                 comments:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                         example: "607c72ef1f7d0e4b98d06d98"
+ *                       text:
+ *                         type: string
+ *                         example: "This is a test comment."
+ *                       author:
+ *                         type: string
+ *                         example: "607c72ef1f7d0e4b98d06d99"
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                         example: "2021-04-14T10:00:00.000Z"
+ *       404:
+ *         description: Post not found
+ */
 export const getComments = async (
   req: Request,
   res: Response,
@@ -72,6 +172,33 @@ export const getComments = async (
   }
 };
 
+/**
+ * @swagger
+ * /api/comments/{postId}/{commentId}:
+ *   delete:
+ *     summary: Delete a comment
+ *     description: Deletes a comment for a post by the comment's author or the post's owner.
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         description: ID of the post to which the comment belongs.
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: commentId
+ *         description: ID of the comment to delete.
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Comment deleted successfully
+ *       403:
+ *         description: Not authorized to delete the comment
+ *       404:
+ *         description: Comment or Post not found
+ */
 export const deleteComment = async (
   req: Request,
   res: Response,

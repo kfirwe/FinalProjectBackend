@@ -17,6 +17,51 @@ export const uploadFormData = upload.fields([
   { name: "category", maxCount: 1 },
 ]);
 
+/**
+ * @swagger
+ * /api/ai:
+ *   post:
+ *     summary: Generate a suggested price for a product based on its details.
+ *     description: This endpoint uses AI (Gemini API) to generate a suggested price based on the title, description, and category of a product.
+ *     parameters:
+ *       - in: body
+ *         name: product
+ *         description: Product details to generate a price suggestion.
+ *         required: true
+ *         schema:
+ *           type: object
+ *           properties:
+ *             title:
+ *               type: string
+ *               description: Product title
+ *               example: "Product Title"
+ *             description:
+ *               type: string
+ *               description: Product description
+ *               example: "This is a sample product description"
+ *             category:
+ *               type: string
+ *               description: Product category
+ *               example: "Electronics"
+ *     responses:
+ *       200:
+ *         description: Suggested price generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Suggested price for this product is $150.00"
+ *                 suggestedPrice:
+ *                   type: number
+ *                   example: 150.00
+ *       400:
+ *         description: Missing required fields
+ *       500:
+ *         description: Error generating price
+ */
 export const generateSuggestedPrice = async (
   req: Request,
   res: Response,

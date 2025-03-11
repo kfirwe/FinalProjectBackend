@@ -3,6 +3,38 @@ import bcrypt from "bcrypt";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import User from "../models/user.model";
 
+/**
+ * @swagger
+ * /api/auth/register:
+ *   post:
+ *     summary: Register a new user
+ *     description: This endpoint is used to register a new user with the provided username, email, password, and optional phone number.
+ *     parameters:
+ *       - in: body
+ *         name: user
+ *         description: User data to register.
+ *         required: true
+ *         schema:
+ *           type: object
+ *           properties:
+ *             username:
+ *               type: string
+ *               example: "testuser"
+ *             email:
+ *               type: string
+ *               example: "testuser@example.com"
+ *             password:
+ *               type: string
+ *               example: "password123"
+ *             phone:
+ *               type: string
+ *               example: "1234567890"
+ *     responses:
+ *       201:
+ *         description: User successfully registered
+ *       400:
+ *         description: Invalid input data
+ */
 export const registerUser = async (
   req: Request,
   res: Response,
@@ -33,6 +65,48 @@ export const registerUser = async (
   }
 };
 
+/**
+ * @swagger
+ * /api/auth/login:
+ *   post:
+ *     summary: Login a user
+ *     description: This endpoint is used to login a user with email and password and generate an access token.
+ *     parameters:
+ *       - in: body
+ *         name: credentials
+ *         description: User credentials for login.
+ *         required: true
+ *         schema:
+ *           type: object
+ *           properties:
+ *             email:
+ *               type: string
+ *               example: "testuser@example.com"
+ *             password:
+ *               type: string
+ *               example: "password123"
+ *     responses:
+ *       200:
+ *         description: Login successful, returns access token and role.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Login successful"
+ *                 token:
+ *                   type: string
+ *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                 role:
+ *                   type: string
+ *                   example: "user"
+ *       401:
+ *         description: Invalid credentials
+ *       404:
+ *         description: User not found
+ */
 export const loginUser = async (
   req: Request,
   res: Response,
@@ -70,6 +144,42 @@ export const loginUser = async (
   }
 };
 
+/**
+ * @swagger
+ * /api/auth/refresh:
+ *   post:
+ *     summary: Refresh the access token
+ *     description: This endpoint is used to refresh the user's access token by providing a valid refresh token.
+ *     parameters:
+ *       - in: body
+ *         name: token
+ *         description: Refresh token to get a new access token.
+ *         required: true
+ *         schema:
+ *           type: object
+ *           properties:
+ *             token:
+ *               type: string
+ *               example: "refresh_token_example"
+ *     responses:
+ *       200:
+ *         description: Token refreshed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Token refreshed successfully"
+ *                 token:
+ *                   type: string
+ *                   example: "new_access_token"
+ *       400:
+ *         description: Refresh token is required
+ *       403:
+ *         description: Invalid or expired refresh token
+ */
 export const refreshToken = async (
   req: Request,
   res: Response,

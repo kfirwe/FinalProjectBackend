@@ -13,6 +13,8 @@ import { errorHandler } from "./middlewares/errorHandler";
 import cookieParser from "cookie-parser";
 import passport from "./config/passport";
 import session from "express-session";
+import swaggerUi from "swagger-ui-express";
+import swaggerSpecs from "./config/swaggerConfig";
 
 dotenv.config();
 
@@ -39,6 +41,10 @@ app.use(
     saveUninitialized: true,
   })
 );
+
+// Serve Swagger UI
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
+
 app.use(passport.initialize());
 app.use(passport.session());
 
