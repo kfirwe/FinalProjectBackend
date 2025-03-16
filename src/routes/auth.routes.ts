@@ -28,7 +28,7 @@ router.get(
   passport.authenticate("google", { failureRedirect: "/login" }),
   (req, res) => {
     if (!req.user) {
-      return res.redirect("http://localhost:5173/login?error=unauthorized");
+      return res.redirect("https://localhost:5173/login?error=unauthorized");
     }
 
     const { user, token } = req.user as { user: any; token: string };
@@ -36,7 +36,7 @@ router.get(
     console.log(" Google OAuth Success, Token:", token);
 
     // Redirect user to frontend with the token
-    res.redirect(`http://localhost:5173/oauth-success?token=${token}`);
+    res.redirect(`https://localhost:5173/oauth-success?token=${token}`);
   }
 );
 

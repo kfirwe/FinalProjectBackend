@@ -290,6 +290,257 @@ export const getPosts = async (
 
 /**
  * @swagger
+ * /api/posts/notmy:
+ *   get:
+ *     summary: Get all posts with filters, that are not mine
+ *     description: Retrieves a list of posts with optional filters for search, price range, and category.
+ *     parameters:
+ *       - in: query
+ *         name: query
+ *         type: string
+ *         description: Search term for post titles
+ *       - in: query
+ *         name: minPrice
+ *         type: number
+ *         description: Minimum price for filtering posts
+ *       - in: query
+ *         name: maxPrice
+ *         type: number
+ *         description: Maximum price for filtering posts
+ *       - in: query
+ *         name: category
+ *         type: string
+ *         description: Category for filtering posts
+ *       - in: query
+ *         name: likedOnly
+ *         type: string
+ *         description: Filter to return only liked posts (true/false)
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved posts
+ *       400:
+ *         description: Invalid query parameters
+ */
+export const getNotMyPosts = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      query,
+      minPrice,
+      maxPrice,
+      category,
+      likedOnly = false, // New query parameter to filter liked posts
+    } = req.query;
+
+    const userId = (req as any).user?.id; // Extract current user ID from JWT
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const filters: any = {};
+
+    // Exclude posts where the author is the current user
+    if (userId) {
+      filters.author = { $ne: userId }; // ✅ Exclude posts from the current user
+    }
+
+    // Add search filter for title
+    if (query) {
+      filters.title = { $regex: query, $options: "i" }; // Case-insensitive search
+    }
+
+    // Add price range filters
+    if (minPrice) {
+      filters.price = { ...filters.price, $gte: Number(minPrice) };
+    }
+    if (maxPrice) {
+      filters.price = { ...filters.price, $lte: Number(maxPrice) };
+    }
+
+    // Add category filter if provided
+    if (category && category !== "") {
+      filters.category = category;
+    }
+
+    // If likedOnly is true, filter posts by those liked by the user
+    if (likedOnly === "true" && userId) {
+      const user = await User.findById(userId).populate("likes");
+      if (user) {
+        const likedPostIds = user.likes.map((post: any) => post._id.toString());
+        filters._id = { $in: likedPostIds }; // Only include posts in user's likes list
+      }
+    }
+
+    // Fetch posts with filters and populate comments and author
+    const posts = await Post.find(filters)
+      .populate("author", "username profileImage") // Populate author details
+      .populate({ path: "comments", select: "_id" }) // Populate comments to count them
+      .skip(skip)
+      .limit(Number(limit))
+      .sort({ createdAt: -1 });
+
+    // Add `isLiked` and `commentsCount` fields for each post
+    const user = userId ? await User.findById(userId) : null;
+    const userLikes = user ? user.likes : [];
+
+    const postsWithAdditionalFields = posts.map((post: any) => {
+      let imageBase64 = "";
+
+      if (post.image) {
+        // If image is a file path (saved locally)
+        const imagePath = path.join(__dirname, `../../${post.image}`);
+        if (fs.existsSync(imagePath)) {
+          const imageBuffer = fs.readFileSync(imagePath);
+          imageBase64 = imageBuffer.toString("base64");
+        } else {
+          console.warn(`⚠️ Image file not found: ${imagePath}`);
+        }
+      }
+
+      return {
+        ...post.toObject(),
+        image: imageBase64, // Send base64-encoded image
+        isLiked: userLikes.includes(post._id.toString()), // Check if post is liked by user
+        commentsCount: post.comments.length, // Count comments
+      };
+    });
+
+    const total = await Post.countDocuments(filters);
+
+    res.status(200).json({ total, posts: postsWithAdditionalFields });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @swagger
+ * /api/posts/my:
+ *   get:
+ *     summary: Get all posts with filters, that are mine
+ *     description: Retrieves a list of posts with optional filters for search, price range, and category.
+ *     parameters:
+ *       - in: query
+ *         name: query
+ *         type: string
+ *         description: Search term for post titles
+ *       - in: query
+ *         name: minPrice
+ *         type: number
+ *         description: Minimum price for filtering posts
+ *       - in: query
+ *         name: maxPrice
+ *         type: number
+ *         description: Maximum price for filtering posts
+ *       - in: query
+ *         name: category
+ *         type: string
+ *         description: Category for filtering posts
+ *       - in: query
+ *         name: likedOnly
+ *         type: string
+ *         description: Filter to return only liked posts (true/false)
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved posts
+ *       400:
+ *         description: Invalid query parameters
+ */
+export const getMyPosts = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      query,
+      minPrice,
+      maxPrice,
+      category,
+      likedOnly = false, // New query parameter to filter liked posts
+    } = req.query;
+
+    const userId = (req as any).user?.id; // Extract current user ID from JWT
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const filters: any = { author: userId };
+
+    // Add search filter for title
+    if (query) {
+      filters.title = { $regex: query, $options: "i" }; // Case-insensitive search
+    }
+
+    // Add price range filters
+    if (minPrice) {
+      filters.price = { ...filters.price, $gte: Number(minPrice) };
+    }
+    if (maxPrice) {
+      filters.price = { ...filters.price, $lte: Number(maxPrice) };
+    }
+
+    // Add category filter if provided
+    if (category && category !== "") {
+      filters.category = category;
+    }
+
+    // If likedOnly is true, filter posts by those liked by the user
+    if (likedOnly === "true" && userId) {
+      const user = await User.findById(userId).populate("likes");
+      if (user) {
+        const likedPostIds = user.likes.map((post: any) => post._id.toString());
+        filters._id = { $in: likedPostIds }; // Only include posts in user's likes list
+      }
+    }
+
+    // Fetch posts with filters and populate comments and author
+    const posts = await Post.find(filters)
+      .populate("author", "username profileImage") // Populate author details
+      .populate({ path: "comments", select: "_id" }) // Populate comments to count them
+      .skip(skip)
+      .limit(Number(limit))
+      .sort({ createdAt: -1 });
+
+    // Add `isLiked` and `commentsCount` fields for each post
+    const user = userId ? await User.findById(userId) : null;
+    const userLikes = user ? user.likes : [];
+
+    const postsWithAdditionalFields = posts.map((post: any) => {
+      let imageBase64 = "";
+
+      if (post.image) {
+        // If image is a file path (saved locally)
+        const imagePath = path.join(__dirname, `../../${post.image}`);
+        if (fs.existsSync(imagePath)) {
+          const imageBuffer = fs.readFileSync(imagePath);
+          imageBase64 = imageBuffer.toString("base64");
+        } else {
+          console.warn(`⚠️ Image file not found: ${imagePath}`);
+        }
+      }
+
+      return {
+        ...post.toObject(),
+        image: imageBase64, // Send base64-encoded image
+        isLiked: userLikes.includes(post._id.toString()), // Check if post is liked by user
+        commentsCount: post.comments.length, // Count comments
+      };
+    });
+
+    const total = await Post.countDocuments(filters);
+
+    res.status(200).json({ total, posts: postsWithAdditionalFields });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @swagger
  * /api/posts/landingPosts:
  *   get:
  *     summary: Get posts for the landing page with filtering options
@@ -719,7 +970,7 @@ export const updatePost = [
         }
 
         // Save new image filename
-        post.image = req.file.filename;
+        post.image = `/uploads/post-images/${req.file.filename}`;
       }
 
       const updatedPost = await post.save();
@@ -1103,4 +1354,4 @@ export const getPostOwner = async (
 };
 
 // Middleware to use in the route
-export const uploadPostImage = upload.single("image");
+// export const uploadPostImage = upload.single("image");

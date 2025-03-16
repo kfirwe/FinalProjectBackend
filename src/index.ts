@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
 import cors from "cors";
+import https from "https";
 import mongoose from "mongoose";
 import authRoutes from "./routes/auth.routes";
 import commentRoutes from "./routes/comment.routes";
@@ -30,6 +31,16 @@ if (!fs.existsSync(uploadsDir)) {
 if (!fs.existsSync(uploadsUserDir)) {
   fs.mkdirSync(uploadsUserDir, { recursive: true }); // Create directory if it doesn't exist
 }
+
+// SSL Certificate Paths
+const sslKeyPath = path.join(__dirname, "../certificates/server.key");
+const sslCertPath = path.join(__dirname, "../certificates/server.cert");
+
+// SSL Certificate Paths
+const sslOptions = {
+  key: fs.readFileSync(sslKeyPath),
+  cert: fs.readFileSync(sslCertPath),
+};
 
 app.use(cors());
 app.use(express.json());
@@ -65,7 +76,7 @@ mongoose
   .connect(process.env.MONGO_URI || "")
   .then(() => {
     console.log("Connected to MongoDB");
-    app.listen(PORT, () => {
+    https.createServer(sslOptions, app).listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
   })

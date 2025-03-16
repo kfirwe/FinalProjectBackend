@@ -314,11 +314,21 @@ export const getLikedPosts = async (
     const postsWithBase64Images = likedPosts.map((post: any) => {
       let imageBase64: string | null = null;
       if (post.image) {
-        const imagePath = path.join(postImagesDir, post.image);
+        // If image is a file path (saved locally)
+        const imagePath = path.join(__dirname, `../../${post.image}`);
         if (fs.existsSync(imagePath)) {
-          imageBase64 = fs.readFileSync(imagePath, { encoding: "base64" });
+          const imageBuffer = fs.readFileSync(imagePath);
+          imageBase64 = imageBuffer.toString("base64");
+        } else {
+          console.warn(`⚠️ Image file not found: ${imagePath}`);
         }
       }
+      // if (post.image) {
+      //   const imagePath = path.join(postImagesDir, post.image);
+      //   if (fs.existsSync(imagePath)) {
+      //     imageBase64 = fs.readFileSync(imagePath, { encoding: "base64" });
+      //   }
+      // }
 
       return {
         ...post.toObject(),
@@ -446,7 +456,7 @@ export const updateUserProfile = [
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const userId = (req as any).user.id;
-      const { username } = req.body;
+      const { username, phone } = req.body;
 
       const user = await User.findById(userId);
 
@@ -465,6 +475,9 @@ export const updateUserProfile = [
 
       // Update username if provided
       user.username = username || user.username;
+
+      // update phone if provided
+      user.phone = phone || user.phone;
 
       // Update profile image if a new file is uploaded
       if (req.file) {
